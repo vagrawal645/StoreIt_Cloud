@@ -1,18 +1,16 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const mongoose = require('mongoose');
-const multer = require('multer');
-const GridFsStorage = require('multer-gridfs-storage');
-const Grid = require('gridfs-stream');
-const methodOverride = require('method-override');
-const User = require("./models/User");
-var passport = require('passport');
-const LocalStrategy = require('passport-local');
 const PassportLocalMongoose = require('passport-local-mongoose');
+const GridFsStorage = require('multer-gridfs-storage');
+const methodOverride = require('method-override');
+const LocalStrategy = require('passport-local');
+const bodyParser = require('body-parser');
+const User = require("./models/User");
+const Grid = require('gridfs-stream');
 var flash = require('connect-flash');
+const mongoose = require('mongoose');
+const express = require('express');
+const multer = require('multer');
+var passport = require('passport');
 const app = express();
-///app.use(express.cookieParser('keyboard cat'));
-//app.use(express.session({ cookie: { maxAge: 60000 }}));
 
 // Middleware
 app.use(require("express-session")({
@@ -28,21 +26,14 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
 app.use( express.static( "public" ) );
-//passport.use(User.createStrategy());
+
 passport.use(new LocalStrategy(User.authenticate()));
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
-const mongoURI = '';
+
+const mongoURI = 'mongodb://amdin:adminamdin1@ds217078.mlab.com:17078/use-me-cloud';
 mongoose.connect(mongoURI);
 const conn = mongoose.createConnection(mongoURI);
-// const MongoClient = require('mongodb').MongoClient;
-// //const uri = "mongodb+srv://vinayak:<password>@cluster0-ipdrn.mongodb.net/admin?retryWrites=true&w=majority";
-// const client = new MongoClient(mongoURI, { useNewUrlParser: true });
-// client.connect(err => {
-//   const collection = client.db("test").collection("devices");
-//   // perform actions on the collection object
-//   client.close();
-// });
 let gfs;
 
 conn.once('open', () => {
@@ -50,16 +41,23 @@ conn.once('open', () => {
   gfs = Grid(conn.db, mongoose.mongo);
   gfs.collection('uploads');
 });
-app.get('/',function(req,res){
+
+app.get('/',function(req,res) {
   res.render('home');
-})
+});
+
 //Auth Routes
-app.get('/register',function(req,res){
+
+app.get('/register',function(req,res) {  
   res.render('register');
-})
-app.post('/register',function(req,res){
-  //var username = req.body.username
-  //req.body.password
+});
+
+app.post('/register',function(req,res) {
+  
+  // Create a collection in the database with same name as the username
+
+  
+  
   User.register(new User({username:req.body.username}),req.body.password,function(err,user){
     if(err){
       console.log(err);
@@ -69,22 +67,24 @@ app.post('/register',function(req,res){
         res.redirect('/up');
     })
    })
- });
- app.get('/login',function(req,res){
-  res.render('login',{message : req.flash("info"),mess : req.flash("err")});
-})
+});
+
+app.get('/login',function(req,res){
+  res.render('login', {message : req.flash("info"), mess : req.flash("err")});
+});
+
 app.post('/login',
   passport.authenticate('local', 
-  { successRedirect: '/up',
-  failureRedirect: '/login' }),
+  { successRedirect: '/up',  failureRedirect: '/login' }),
   function(req,res){
     //req.flash("err","Invalid username/password")
   }
 );
+
 app.get('/logout',function(req,res){
   req.logout();
   res.redirect("/");
-})
+});
 
 app.get('/up',isLoggedIn, (req, res) => {
   gfs.files.find().toArray((err, files) => {
@@ -96,7 +96,7 @@ app.get('/up',isLoggedIn, (req, res) => {
     }
   });
 });
-//Auth Routes end
+
 // @route GET /
 // @desc Loads form
 // @route POST /upload
@@ -120,7 +120,7 @@ app.post('/upload', (req, res) => {
          res.json({error_code:1,err_desc:err});
          return;
     }
-    res.redirect('/');
+    res.redirect('/up');
   });
   
 });
@@ -188,9 +188,10 @@ app.delete('/files/:id', (req, res) => {
       return res.status(404).json({ err: err });
     }
 
-    res.redirect('/');
+    res.redirect('/up');
   });
 });
+
 function isLoggedIn(req,res,next){
     if(req.isAuthenticated()){
       return next();
@@ -201,6 +202,6 @@ function isLoggedIn(req,res,next){
 
     }
 }
-const port = 8080;
 
+const port = 8080;
 app.listen(port, () => console.log(`Server started on port ${port}`));
