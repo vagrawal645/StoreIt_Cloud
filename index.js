@@ -34,7 +34,7 @@ app.use(function(req,res,next){
 passport.use(new LocalStrategy(User.authenticate()));
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
-const mongoURI = 'DATABASE_URL';
+const mongoURI = 'mongodb+srv://vinayak:3Qd6PrAu7We2VLlO@cluster0-ipdrn.mongodb.net/test?retryWrites=true&w=majority';
 mongoose.connect(mongoURI);
 const conn = mongoose.createConnection(mongoURI);
 
@@ -71,7 +71,7 @@ app.post('/register',function(req,res){
 app.post('/login',
 function(req,res){
   passport.authenticate('local')(req,res,function(){   
-    loggedInUser = req.body.username;
+    //loggedInUser = req.body.username;
     res.redirect('/up/'+req.body.username);
   })
 }
@@ -96,20 +96,21 @@ app.get('/up/:id', isLoggedIn, (req, res) => {
       }
 
       var userFilesArray = user.file;
-      
-      res.render('index', {files: userFilesArray});
-      
-      // Functions to be added here :-
-
-      /* 
-        1. The User object is stored in the variable loggedInUser.
-        2. Check the length of 'file' array of the user, e.g. if (loggedInUser.file.length !== 0).
-        3. If there are files in the array, we nwwd to fetch the files. Search for the files in 
-            uploads collection with the name of the file that will be stored in the 'file' array itself.
-        4. Pass the files to 'index' page to display
-      */
-
-
+      if(userFilesArray.length!= 0){
+        userFilesArray.forEach(element => {
+          gfs.files.find({filename : element}).toArray((err, files) => {
+            // Check if files
+            //console.log(req.user);
+            if (!files || files.length === 0) {
+              res.render('index', { files: false });
+            } else {
+              res.render('index', { files: files , currUser: req.user});
+            }
+          });
+        });
+      }else{
+        res.render('index', {files: userFilesArray});
+      }
     };
   });
 });
@@ -123,8 +124,9 @@ app.post('/upload', (req, res) => {
   const storage = new GridFsStorage({
     url: mongoURI,
     file: (req, file) => {
-      fileName = file.originalname;
-      return  { filename: file.originalname, bucketName: 'uploads' };
+      // fileName = file.originalname;
+    // var q = newFile.split(' ').join('_');
+      return  { filename: file.originalname.split(' ').join('_'), bucketName: 'uploads' };
     }
   });
   
@@ -143,7 +145,22 @@ app.post('/upload', (req, res) => {
     loggedInUser.file.push(q);
     User.findByIdAndUpdate({_id: loggedInUser.id}, {$set: {file: loggedInUser.file}}).then((updatedDoc) => {})
     console.log(q);
-    res.redirect('/up/' + loggedInUser.username);
+    var userFilesArray = loggedInUser.file;
+      if(userFilesArray.length!= 0){
+        userFilesArray.forEach(element => {
+          gfs.files.find({filename : element}).toArray((err, files) => {
+            // Check if files
+            //console.log(req.user);
+            if (!files || files.length === 0) {
+              res.render('index', { files: false });
+            } else {
+              res.render('index', { files: files});
+            }
+          });
+        });
+      }else{
+        res.render('index', {files: userFilesArray});
+      }
   });
   
 });
