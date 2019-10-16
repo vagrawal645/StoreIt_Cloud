@@ -10,6 +10,7 @@ const mongoose = require('mongoose');
 var passport = require('passport');
 const express = require('express');
 const multer = require('multer');
+var asyc = require('async');
 const app = express();
 
 // Middleware
@@ -82,37 +83,17 @@ app.get('/logout',function(req,res){
   res.redirect("/");
 })
 
-app.get('/up/:id', isLoggedIn, (req, res) => {
-  User.findOne({username : req.params.id}, function(err,user){
-    if (user !== null)
-    {
-      loggedInUser = user;
-    }
+app.get('/up/:id',isLoggedIn,fetchDetails,(req, res) => {
+  //if(res.locals.filesarray.length !==0 ){
+    // var fetchDetail = fetchDetails(); 
+    // fetchDetail.then({
+      // function(filesarray){
+        res.render('index', {files:res.locals.userfiles});
+      // }
+    // })
     
-    if(err) res.json(err);
-    else{      
-      if(user == null){
-        return res.render('index', { files: false });
-      }
-
-      var userFilesArray = user.file;
-      if(userFilesArray.length!= 0){
-        userFilesArray.forEach(element => {
-          gfs.files.find({filename : element}).toArray((err, files) => {
-            // Check if files
-            //console.log(req.user);
-            if (!files || files.length === 0) {
-              res.render('index', { files: false });
-            } else {
-              res.render('index', { files: files , currUser: req.user});
-            }
-          });
-        });
-      }else{
-        res.render('index', {files: userFilesArray});
-      }
-    };
-  });
+  //}
+    
 });
 //Auth Routes end
 
@@ -145,22 +126,7 @@ app.post('/upload', (req, res) => {
     loggedInUser.file.push(q);
     User.findByIdAndUpdate({_id: loggedInUser.id}, {$set: {file: loggedInUser.file}}).then((updatedDoc) => {})
     console.log(q);
-    var userFilesArray = loggedInUser.file;
-      if(userFilesArray.length!= 0){
-        userFilesArray.forEach(element => {
-          gfs.files.find({filename : element}).toArray((err, files) => {
-            // Check if files
-            //console.log(req.user);
-            if (!files || files.length === 0) {
-              res.render('index', { files: false });
-            } else {
-              res.render('index', { files: files});
-            }
-          });
-        });
-      }else{
-        res.render('index', {files: userFilesArray});
-      }
+    res.redirect('/up/'+loggedInUser.username);
   });
   
 });
@@ -223,15 +189,16 @@ app.get('/files/:filename', (req, res) => {
 // @route DELETE /files/:id
 // @desc  Delete file
 app.delete('/files/:id', (req, res) => {
-  gfs.remove({ _id: req.params.id, root: 'uploads' }, (err, gridStore) => {
+  gfs.files.removeAndUpdate({ filename : req.params.id}, (err, gridStore) => {
     if (err) {
       return res.status(404).json({ err: err });
-    }
-    
-    
-    
+    }   
     // 1. Delete the filename from user's file array and,
-
+    var index = req.user.file.indexOf(req.params.id)
+    console.log(index);
+    if(index>-1){
+      user.file.splice(index,1);
+    }
     // 2. update it in the database
     
     
@@ -246,9 +213,52 @@ function isLoggedIn(req,res,next){
       req.flash('info',"Please login first!");
       req.flash('err',"Invalid username/password");
       res.redirect("/login");
-
     }
 }
-const port = 8080;
+async function fetchDetails(req,res,next){
+    User.findOne({username : req.params.id}, function(err,user){
+      if (user !== null)
+      {
+        loggedInUser = user;
+      }
+      if(err) res.json(err);
+      else{      
+        if(user == null){
+          return res.render('index', { files: false });
+        }else{
+          var userFilesArray = user.file;
+          if(userFilesArray.length!= 0){  
+          let filesarray = [];
+          function storedata(){
+            return new Promise((resolve,reject)=>{
+              userFilesArray.forEach(function(element){
+                gfs.files.findOne({filename : element},function(err, found){
+                  //if(found !== null)
+                    filesarray.push(found);
+                  if(filesarray.length == userFilesArray.length)
+                    resolve(filesarray);
+                });
+              })
+            })
+          }
+          function loadPage(){
+            res.locals.userfiles = filesarray;
+            console.log(filesarray);
+            next();
+          }
+          async function init(){
+            await storedata();
+            loadPage();
+          }
+          init();
+          }else{
+            console.log("no here")
+            return next();
+          }
+        }
+      };
+    });
 
+}
+const port = 8080;
 app.listen(port, () => console.log(`Server started on port ${port}`));
