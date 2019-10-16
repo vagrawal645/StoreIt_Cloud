@@ -29,6 +29,8 @@ app.use(flash());
 app.use( express.static( "public" ) );
 app.use(function(req,res,next){
     res.locals.currUser = req.user;
+    // res.locals.message = req.flash("info");
+    // res.locals.mess = req.flash("err");
     next();
 })
 
@@ -67,7 +69,7 @@ app.post('/register',function(req,res){
    })
  });
  app.get('/login',function(req,res){
-  res.render('login',{message : req.flash("info"),mess : req.flash("err")});
+  res.render('login');
 })
 app.post('/login',
 function(req,res){
@@ -80,6 +82,7 @@ function(req,res){
 );
 app.get('/logout',function(req,res){
   req.logout();
+  // req.flash('err',"Logged you out");
   res.redirect("/");
 })
 
@@ -210,8 +213,8 @@ function isLoggedIn(req,res,next){
     if(req.isAuthenticated()){
       return next();
     }else{
-      req.flash('info',"Please login first!");
-      req.flash('err',"Invalid username/password");
+      // req.flash('info',"Please login first!");
+      // req.flash('err',"Invalid username/password");
       res.redirect("/login");
     }
 }
