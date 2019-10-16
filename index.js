@@ -37,7 +37,7 @@ app.use(function(req,res,next){
 passport.use(new LocalStrategy(User.authenticate()));
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
-const mongoURI = 'mongodb+srv://vinayak:3Qd6PrAu7We2VLlO@cluster0-ipdrn.mongodb.net/test?retryWrites=true&w=majority';
+const mongoURI = '';
 mongoose.connect(mongoURI);
 const conn = mongoose.createConnection(mongoURI);
 
